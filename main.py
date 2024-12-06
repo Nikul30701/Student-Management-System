@@ -1,7 +1,7 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import QApplication, QLabel, QWidget, QGridLayout, QLineEdit, QPushButton, QMainWindow, \
-    QTableWidget, QTableWidgetItem, QDialog, QVBoxLayout, QComboBox, QToolBar, QStatusBar
+    QTableWidget, QTableWidgetItem, QDialog, QVBoxLayout, QComboBox, QToolBar, QStatusBar, QMessageBox
 import sys
 import sqlite3
 
@@ -14,8 +14,8 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(400,400)
 
         file_menu_item = self.menuBar().addMenu("&File")
-        help_menu_item = self.menuBar().addMenu("&Help")
         edit_menu_item = self.menuBar().addMenu("&Edit")
+        help_menu_item = self.menuBar().addMenu("&Help")
 
         add_student_action = QAction(QIcon("icons/add.png"),"Add Student", self)
         add_student_action.triggered.connect(self.insert)
@@ -89,7 +89,7 @@ class MainWindow(QMainWindow):
         dialog.exec()
 
     def delete(self):
-        dialog = DeleteDialog
+        dialog = DeleteDialog()
         dialog.exec()
 
 
@@ -149,6 +149,13 @@ class EditDialog(QDialog):
         # refresh the table
         main_window.load_data()
 
+        self.close()
+
+        confirmation_widget = QMessageBox()
+        confirmation_widget.setWindowTitle("Success")
+        confirmation_widget.setText("The Record was updated successfully!")
+        confirmation_widget.exec()
+
 
 class InsertDialog(QDialog):
     def __init__(self):
@@ -196,6 +203,13 @@ class InsertDialog(QDialog):
         connection.close()
         main_window.load_data() # to reload the data
 
+        self.close()
+
+        confirmation_widget = QMessageBox()
+        confirmation_widget.setWindowTitle("Success")
+        confirmation_widget.setText("The Record was insert successfully!")
+        confirmation_widget.exec()
+
 
 class SearchesDialog(QDialog):
     def __init__(self):
@@ -232,7 +246,44 @@ class SearchesDialog(QDialog):
         connection.close()
 
 class DeleteDialog(QDialog):
-    pass
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Delete Student Data")
+
+
+        layout = QGridLayout()
+
+        confirmation =QLabel("Are you sure you want to delete?")
+        yes = QPushButton("Yes")
+        no = QPushButton("No")
+
+        layout.addWidget(confirmation, 0, 0, 1, 2)
+        layout.addWidget(yes, 1, 0)
+        layout.addWidget(no, 1, 1)
+
+        self.setLayout(layout)
+
+        yes.clicked.connect(self.delete_student)
+
+    def delete_student(self):
+        # Get selected row index and student id
+        index = main_window.table.currentRow()
+        student_id = main_window.table.item(index, 0).text()
+
+        connection = sqlite3.connect("database.db")
+        cursor = connection.cursor()
+        cursor.execute("DELETE FROM students WHERE id = ?",(student_id,))
+        connection.commit()
+        cursor.close()
+        connection.close()
+        main_window.load_data()
+
+        self.close()
+
+        confirmation_widget = QMessageBox()
+        confirmation_widget.setWindowTitle("Success")
+        confirmation_widget.setText("The Record was deleted successfully!")
+        confirmation_widget.exec()
 
 app = QApplication(sys.argv)
 main_window = MainWindow()
