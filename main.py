@@ -6,6 +6,14 @@ import sys
 import sqlite3
 
 
+class DatabaseConnection:
+    def __init__(self, database_file = "database.db"):
+        self.database_file = database_file
+
+    def connect(self):
+        connection = sqlite3.connect(self.database_file)
+        return connection
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -13,6 +21,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Student Management System")
         self.setMinimumSize(400,400)
 
+        # Add MenuBar
         file_menu_item = self.menuBar().addMenu("&File")
         edit_menu_item = self.menuBar().addMenu("&Edit")
         help_menu_item = self.menuBar().addMenu("&Help")
@@ -23,6 +32,8 @@ class MainWindow(QMainWindow):
 
         about_action = QAction("About", self)
         help_menu_item.addAction(about_action)
+        about_action.setMenuRole(QAction.MenuRole.NoRole)
+        about_action.triggered.connect(self.about)
 
         search_student_action = QAction(QIcon("icons/search.png"),"Search", self)
         search_student_action.triggered.connect(self.search)
@@ -66,8 +77,9 @@ class MainWindow(QMainWindow):
         self.statusbar.addWidget(edit_button)
         self.statusbar.addWidget(delete_button)
 
+    # Load data in the table
     def load_data(self):
-        connection = sqlite3.connect("database.db")
+        connection = DatabaseConnection().connect()
         result = connection.execute("SELECT * FROM students")
         self.table.setRowCount(0)
         for row_number,row_data in enumerate(result):
@@ -91,6 +103,22 @@ class MainWindow(QMainWindow):
     def delete(self):
         dialog = DeleteDialog()
         dialog.exec()
+
+    def about(self):
+        dialog = AboutDialog()
+        dialog.exec()
+
+
+class AboutDialog(QMessageBox):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("About")
+        content = """
+        The Student Management System (SMS) is a comprehensive application designed to simplify and streamline the administration of student-related information.\n
+        This system provides an efficient way to handle data related to students, including insertion, searching, deletion, and updating of student records.
+        """
+
+        self.setText(content)
 
 
 class EditDialog(QDialog):
@@ -136,8 +164,9 @@ class EditDialog(QDialog):
 
         self.setLayout(layout)
 
+    # Update the data
     def update_student(self):
-        connection = sqlite3.connect("database.db")
+        connection = DatabaseConnection().connect()
         cursor = connection.cursor()
         cursor.execute("UPDATE students SET name = ?, course = ?, mobile = ? WHERE id =?",
                        (self.student_name.text(),
@@ -193,7 +222,7 @@ class InsertDialog(QDialog):
         name = self.student_name.text()
         course = self.course_name.itemText(self.course_name.currentIndex()) # cause this is combo box.
         mobile = self.mobile.text()
-        connection = sqlite3.connect("database.db")
+        connection = DatabaseConnection().connect()
         cursor = connection.cursor()
         cursor.execute("INSERT INTO students (name, course, mobile) VALUES (?, ?, ?)",
                        (name, course, mobile))
@@ -214,7 +243,7 @@ class InsertDialog(QDialog):
 class SearchesDialog(QDialog):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Student Management System")
+        self.setWindowTitle("Search")
         self.setFixedWidth(275)
         self.setFixedHeight(200)
 
@@ -224,15 +253,17 @@ class SearchesDialog(QDialog):
         self.search_name.setPlaceholderText("Name")
         layout.addWidget(self.search_name)
 
+        # add search button
         search_button = QPushButton("Search")
         search_button.clicked.connect(self.search)
         layout.addWidget(search_button)
 
         self.setLayout(layout)
 
+    # Add search function
     def search(self):
         name = self.search_name.text()
-        connection = sqlite3.connect("database.db")
+        connection = DatabaseConnection().connect()
         cursor = connection.cursor()
         result = cursor.execute("SELECT * FROM students WHERE name = ?",  (name,))
         row = list(result)
@@ -249,7 +280,6 @@ class DeleteDialog(QDialog):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Delete Student Data")
-
 
         layout = QGridLayout()
 
@@ -270,7 +300,7 @@ class DeleteDialog(QDialog):
         index = main_window.table.currentRow()
         student_id = main_window.table.item(index, 0).text()
 
-        connection = sqlite3.connect("database.db")
+        connection = DatabaseConnection().connect()
         cursor = connection.cursor()
         cursor.execute("DELETE FROM students WHERE id = ?",(student_id,))
         connection.commit()
@@ -280,10 +310,12 @@ class DeleteDialog(QDialog):
 
         self.close()
 
+        # add messagebox
         confirmation_widget = QMessageBox()
         confirmation_widget.setWindowTitle("Success")
         confirmation_widget.setText("The Record was deleted successfully!")
         confirmation_widget.exec()
+
 
 app = QApplication(sys.argv)
 main_window = MainWindow()
